@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_example/point_groups.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_maps_example/cubit/map_cubit.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapBottomSheet extends StatefulWidget {
@@ -23,13 +24,17 @@ class _MapBottomSheetState extends State<MapBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<MapCubit>().state;
+
     return DraggableScrollableSheet(
       controller: _sheetController,
       initialChildSize: 0.2,
       minChildSize: 0.1,
       maxChildSize: 0.5,
       builder: (context, scrollController) {
-        final allPoints = pointGroups.entries.expand((e) => e.value).toList();
+        final allPoints = state is MapCubitLoaded
+            ? state.points.entries.expand((e) => e.value).toList()
+            : [];
 
         return Container(
           decoration: const BoxDecoration(
@@ -61,7 +66,6 @@ class _MapBottomSheetState extends State<MapBottomSheet> {
                   ),
                 ),
               ),
-              // Your list content
               Expanded(
                 child: ListView.builder(
                   padding: EdgeInsets.only(top: 8),

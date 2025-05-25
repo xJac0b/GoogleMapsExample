@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_example/chips_section.dart';
 import 'package:google_maps_example/cubit/map_cubit.dart';
-import 'package:google_maps_example/map_bottom_sheet.dart';
+import 'package:google_maps_example/widgets/chips_section.dart';
+import 'package:google_maps_example/widgets/map_bottom_sheet.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapPage extends StatelessWidget {
@@ -17,18 +17,17 @@ class MapPage extends StatelessWidget {
           return Stack(
             children: [
               GoogleMap(
-                onMapCreated: (GoogleMapController controller) {
-                  cubit.mapController.complete(controller);
-                },
-                initialCameraPosition: CameraPosition(
-                  target: state.currentPosition,
-                  zoom: 14,
-                ),
-                clusterManagers: state.clusterManagers,
-                zoomControlsEnabled: true,
-                padding: EdgeInsets.only(bottom: 300),
-                markers: state.markers.toSet(),
-              ),
+                  onMapCreated: (GoogleMapController controller) {
+                    cubit.mapController.complete(controller);
+                  },
+                  initialCameraPosition: CameraPosition(
+                    target: state.currentPosition,
+                    zoom: 14,
+                  ),
+                  clusterManagers: cubit.convertPointsToClusterManagers(),
+                  zoomControlsEnabled: true,
+                  padding: EdgeInsets.only(bottom: 300),
+                  markers: cubit.convertPointsToMarkers()),
               ChipsSection(),
               MapBottomSheet(
                 onTap: (point) => cubit.cameraToPosition(point, 16),

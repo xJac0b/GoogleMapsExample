@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_example/cubit/map_cubit.dart';
-import 'package:google_maps_example/map_chip.dart';
-import 'package:google_maps_example/point_groups.dart';
+import 'package:google_maps_example/widgets/map_chip.dart';
 
 class ChipsSection extends StatefulWidget {
   const ChipsSection({super.key});
@@ -34,7 +33,7 @@ class _ChipsSectionState extends State<ChipsSection> {
                     MapChip(
                         text: 'Osiedle1',
                         onTap: () {
-                          final points = pointGroups['Osiedle1']!;
+                          final points = cubit.pointGroups['Osiedle1']!;
                           if (points.isNotEmpty) {
                             cubit.cameraToPosition(points.first);
                           }
@@ -42,7 +41,7 @@ class _ChipsSectionState extends State<ChipsSection> {
                     MapChip(
                         text: 'Osiedle2',
                         onTap: () {
-                          final points = pointGroups['Osiedle2']!;
+                          final points = cubit.pointGroups['Osiedle2']!;
                           if (points.isNotEmpty) {
                             cubit.cameraToPosition(points.first);
                           }

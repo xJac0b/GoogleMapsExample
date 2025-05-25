@@ -17,10 +17,11 @@ class MapChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Chip(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            label: Text(text)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          label: Text(text),
+        ),
       ),
     );
   }
