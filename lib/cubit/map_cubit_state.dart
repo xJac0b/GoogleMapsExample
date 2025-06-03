@@ -12,5 +12,5 @@ final class MapCubitLoaded extends MapCubitState {
   });
 
   final LatLng currentPosition;
-  final Map<String, List<LatLng>> points;
+  final List<MapPoint> points;
 }

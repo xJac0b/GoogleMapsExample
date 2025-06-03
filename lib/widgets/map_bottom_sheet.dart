@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_example/cubit/map_cubit.dart';
+import 'package:google_maps_example/model/map_point.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapBottomSheet extends StatefulWidget {
@@ -24,6 +25,7 @@ class _MapBottomSheetState extends State<MapBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final cubit = context.read<MapCubit>();
     final state = context.watch<MapCubit>().state;
 
     return DraggableScrollableSheet(
@@ -32,9 +34,7 @@ class _MapBottomSheetState extends State<MapBottomSheet> {
       minChildSize: 0.1,
       maxChildSize: 0.5,
       builder: (context, scrollController) {
-        final allPoints = state is MapCubitLoaded
-            ? state.points.entries.expand((e) => e.value).toList()
-            : [];
+        final allPoints = state is MapCubitLoaded ? state.points : <MapPoint>[];
 
         return Container(
           decoration: const BoxDecoration(
@@ -73,11 +73,19 @@ class _MapBottomSheetState extends State<MapBottomSheet> {
                   itemCount: allPoints.length,
                   itemBuilder: (context, index) {
                     final point = allPoints[index];
+                    final iconPath = cubit.getIconByType(point.types);
+
                     return ListTile(
-                      leading: Icon(Icons.location_on, color: Colors.red),
-                      title:
-                          Text('Point ${point.latitude}, ${point.longitude}'),
-                      onTap: () => widget.onTap(point),
+                      leading: iconPath == null
+                          ? Icon(Icons.place, size: 40)
+                          : Image.asset(
+                              iconPath,
+                              width: 40,
+                              height: 40,
+                            ),
+                      title: Text(point.name),
+                      subtitle: Text(point.address),
+                      onTap: () => widget.onTap(point.coordinates),
                     );
                   },
                 ),

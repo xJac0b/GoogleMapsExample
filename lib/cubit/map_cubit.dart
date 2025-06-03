@@ -2,6 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_google_places_sdk/flutter_google_places_sdk.dart'
+    as places;
+import 'package:google_maps_example/infrastructure/place_service.dart';
+import 'package:google_maps_example/model/map_point.dart';
+import 'package:google_maps_example/model/place_input.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 
@@ -9,31 +14,40 @@ part 'map_cubit_state.dart';
 
 class MapCubit extends Cubit<MapCubitState> {
   MapCubit() : super(MapCubitLoading()) {
-    _getLocationUpdates();
+    initPoints();
   }
   final Location locationController = Location();
   final Completer<GoogleMapController> mapController =
       Completer<GoogleMapController>();
   late final StreamSubscription<LocationData>? locationSubscription;
 
-  Map<String, List<LatLng>> pointGroups = {
-    'Osiedle1': [
-      LatLng(49.610259850281345, 20.70454385044939),
-      LatLng(49.61292938697944, 20.703857205006724),
-      LatLng(49.61169717759588, 20.706882736488474),
-      LatLng(49.61190747223398, 20.70743795370188),
-      LatLng(49.61138607890537, 20.70455457928443),
-      LatLng(49.61088901207249, 20.708213112033643),
-      LatLng(49.610572694176, 20.70729043222006),
-    ],
-    'Osiedle2': [
-      LatLng(49.62919867961747, 20.75007590636796),
-      LatLng(49.62897282335421, 20.75039777141921),
-      LatLng(49.63000132955635, 20.748965471941148),
-      LatLng(49.62994226053119, 20.75185152856736),
-      LatLng(49.62826223797123, 20.75202318996264),
-    ],
-  };
+  Future<void> initPoints() async {
+    final placeService =
+        PlaceService.getInstance('AIzaSyCyLTsx-sSU52B9slUL5Eg9pV_wEYzaWfs');
+
+    for (var place in inputPlaces) {
+      final point = await placeService.fetchPoint(place);
+      if (point != null) {
+        mapPoints.add(point);
+      }
+    }
+    _getLocationUpdates();
+  }
+
+  List<MapPoint> mapPoints = [];
+  List<PlaceInput> inputPlaces = [
+    PlaceInput(
+        name: 'Fitness Trzy Korony', address: 'Lwowska 80, 33-300 Nowy Sącz'),
+    PlaceInput(
+        name: 'Żabka | Prosto z pieca',
+        address: 'Lwowska 63, 33-300 Nowy Sącz'),
+    PlaceInput(
+        name: 'Żabka',
+        address: 'Generała Władysława Sikorskiego 33, 33-300 Nowy Sącz'),
+    PlaceInput(
+        name: 'Oxy Gym | Siłownia, fitness, trening EMS',
+        address: 'Kochanowskiego 20, 33-300 Nowy Sącz'),
+  ];
 
   Set<Marker> convertPointsToMarkers() {
     if (state is! MapCubitLoaded) {
@@ -41,35 +55,76 @@ class MapCubit extends Cubit<MapCubitState> {
     }
     final currentState = state as MapCubitLoaded;
 
-    return currentState.points.entries.expand((entry) {
-      final id = entry.key;
-      final points = entry.value;
-
-      return points.map(
-        (p) => Marker(
-          markerId: MarkerId('${p.latitude},${p.longitude}'),
-          position: p,
-          infoWindow: InfoWindow(title: 'Point ${p.latitude},${p.longitude}'),
-          clusterManagerId: ClusterManagerId(id),
-        ),
+    return currentState.points.map((mapPoint) {
+      final iconPath = getIconByType(mapPoint.types);
+      return Marker(
+        markerId: MarkerId('${mapPoint.coordinates}'),
+        position: mapPoint.coordinates,
+        infoWindow: InfoWindow(title: mapPoint.name, snippet: mapPoint.address),
+        onTap: () {
+          cameraToPosition(
+            mapPoint.coordinates,
+            16,
+          );
+        },
+        icon: iconPath != null
+            ? AssetMapBitmap(iconPath, width: 32, height: 32)
+            : BitmapDescriptor.defaultMarker,
+        clusterManagerId: ClusterManagerId('main'),
       );
     }).toSet();
   }
 
-  Set<ClusterManager> convertPointsToClusterManagers() {
+  Future<void> clearFilteredPoints() async {
     if (state is! MapCubitLoaded) {
-      return {};
+      return;
     }
     final currentState = state as MapCubitLoaded;
 
-    return currentState.points.entries.map((entry) {
-      final id = entry.key;
+    emit(MapCubitLoaded(
+      points: mapPoints,
+      currentPosition: currentState.currentPosition,
+    ));
 
-      return ClusterManager(
-        onClusterTap: (cluster) {},
-        clusterManagerId: ClusterManagerId(id),
-      );
-    }).toSet();
+    final matchingLatLngs =
+        mapPoints.map((point) => point.coordinates).toList();
+    await cameraToBounds(boundsFromLatLngList(matchingLatLngs));
+  }
+
+  Future<void> filterPointsByType(places.PlaceType type) async {
+    if (state is! MapCubitLoaded) {
+      return;
+    }
+    final currentState = state as MapCubitLoaded;
+
+    final filteredPoints =
+        mapPoints.where((point) => point.types.contains(type)).toList();
+
+    emit(MapCubitLoaded(
+      points: filteredPoints,
+      currentPosition: currentState.currentPosition,
+    ));
+
+    final matchingLatLngs =
+        filteredPoints.map((point) => point.coordinates).toList();
+
+    await cameraToBounds(boundsFromLatLngList(matchingLatLngs));
+  }
+
+  LatLngBounds boundsFromLatLngList(List<LatLng> points) {
+    final southwestLat =
+        points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b);
+    final southwestLng =
+        points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b);
+    final northeastLat =
+        points.map((p) => p.latitude).reduce((a, b) => a > b ? a : b);
+    final northeastLng =
+        points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b);
+
+    return LatLngBounds(
+      southwest: LatLng(southwestLat, southwestLng),
+      northeast: LatLng(northeastLat, northeastLng),
+    );
   }
 
   Future<void> _getLocationUpdates() async {
@@ -97,7 +152,9 @@ class MapCubit extends Cubit<MapCubitState> {
           currentLocation.longitude != null) {
         emit(
           MapCubitLoaded(
-            points: pointGroups,
+            points: (state is MapCubitLoaded)
+                ? (state as MapCubitLoaded).points
+                : mapPoints,
             currentPosition: LatLng(
               currentLocation.latitude!,
               currentLocation.longitude!,
@@ -119,9 +176,24 @@ class MapCubit extends Cubit<MapCubitState> {
     controller.animateCamera(CameraUpdate.newCameraPosition(newCameraPosition));
   }
 
+  Future<void> cameraToBounds(LatLngBounds bounds) async {
+    final GoogleMapController controller = await mapController.future;
+
+    controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100));
+  }
+
   @override
   Future<void> close() {
     locationSubscription?.cancel();
     return super.close();
+  }
+
+  String? getIconByType(List<places.PlaceType> types) {
+    for (var type in types) {
+      if (icons.containsKey(type)) {
+        return icons[type];
+      }
+    }
+    return null;
   }
 }

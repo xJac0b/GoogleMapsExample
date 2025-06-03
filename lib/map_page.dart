@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_example/cubit/map_cubit.dart';
 import 'package:google_maps_example/widgets/chips_section.dart';
 import 'package:google_maps_example/widgets/map_bottom_sheet.dart';
+import 'package:google_maps_example/widgets/places_search_bar.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapPage extends StatelessWidget {
@@ -24,11 +25,20 @@ class MapPage extends StatelessWidget {
                     target: state.currentPosition,
                     zoom: 14,
                   ),
-                  clusterManagers: cubit.convertPointsToClusterManagers(),
+                  clusterManagers: {
+                    ClusterManager(clusterManagerId: ClusterManagerId('main'))
+                  },
                   zoomControlsEnabled: true,
                   padding: EdgeInsets.only(bottom: 300),
                   markers: cubit.convertPointsToMarkers()),
-              ChipsSection(),
+              Column(
+                children: [
+                  PlacesSearchBar(
+                    onSelected: (point) => cubit.cameraToPosition(point, 16),
+                  ),
+                  ChipsSection(),
+                ],
+              ),
               MapBottomSheet(
                 onTap: (point) => cubit.cameraToPosition(point, 16),
               )
